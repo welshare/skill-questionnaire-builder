@@ -75,5 +75,5 @@ responses.json
 claude_outputs/
 claude_logs/
 
-./*.skill
+*.skill
 # End of .gitignore
