@@ -3,10 +3,10 @@
 Validate FHIR Questionnaire resources against JSON Schema.
 
 This script validates FHIR Questionnaire JSON files against the schema defined in
-assets/schema/questionnaire.schema.json. It performs both schema validation and
+references/schema/questionnaire.schema.json. It performs both schema validation and
 additional semantic checks.
 
-Source of Truth: The definitive schema is located at assets/schema/questionnaire.schema.json
+Source of Truth: The definitive schema is located at references/schema/questionnaire.schema.json
 
 Usage:
     python validate_questionnaire.py questionnaire.json
@@ -187,14 +187,14 @@ def load_schema(schema_path: Path = None) -> Dict[str, Any]:
     if schema_path is None:
         # Try to find schema relative to script location
         script_dir = Path(__file__).parent
-        schema_path = script_dir.parent / "assets" / "schema" / "questionnaire.schema.json"
+        schema_path = script_dir.parent / "references" / "schema" / "questionnaire.schema.json"
 
     try:
         with open(schema_path, 'r') as f:
             return json.load(f)
     except FileNotFoundError:
         print(f"Error: Schema file not found at {schema_path}", file=sys.stderr)
-        print("Please ensure assets/schema/questionnaire.schema.json exists", file=sys.stderr)
+        print("Please ensure references/schema/questionnaire.schema.json exists", file=sys.stderr)
         sys.exit(1)
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON in schema file: {e}", file=sys.stderr)
@@ -227,7 +227,7 @@ Examples:
     parser.add_argument("--schema-only", action="store_true",
                        help="Only perform JSON Schema validation (skip semantic checks)")
     parser.add_argument("--schema", type=Path,
-                       help="Path to custom schema file (default: assets/schema/questionnaire.schema.json)")
+                       help="Path to custom schema file (default: references/schema/questionnaire.schema.json)")
 
     args = parser.parse_args()
 

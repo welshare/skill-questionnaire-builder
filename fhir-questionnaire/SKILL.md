@@ -57,9 +57,9 @@ python3 scripts/validate_questionnaire.py assets/templates/minimal.json
 
 ## Schema Reference
 
-**Source of Truth**: `assets/schema/questionnaire.schema.json` - All structural definitions are defined in this JSON Schema file.
+**Source of Truth**: `references/schema/questionnaire.schema.json` - All structural definitions are defined in this JSON Schema file.
 
-See `references/fhir_questionnaire_spec.md` for human-readable schema documentation, or refer to `assets/schema/questionnaire.schema.json` for the definitive FHIR R4 Questionnaire schema.
+See `references/fhir_questionnaire_spec.md` for human-readable schema documentation, or refer to `references/schema/questionnaire.schema.json` for the definitive FHIR R4 Questionnaire schema.
 
 ## Quick Start
 
@@ -499,7 +499,7 @@ python scripts/validate_questionnaire.py questionnaire.json --schema custom-sche
 **Requires**: `jsonschema` library (`pip install jsonschema` or `uv pip install jsonschema`)
 
 Validates:
-- **JSON Schema compliance**: All fields, types, patterns defined in `assets/schema/questionnaire.schema.json`
+- **JSON Schema compliance**: All fields, types, patterns defined in `references/schema/questionnaire.schema.json`
 - **Semantic checks**: linkId uniqueness, enableWhen references, best practices
 - **Warnings**: Missing recommended fields (title, text, answer options)
 
