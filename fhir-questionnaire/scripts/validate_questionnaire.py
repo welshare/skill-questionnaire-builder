@@ -14,6 +14,7 @@ Usage:
     python validate_questionnaire.py questionnaire.json --schema-only
 """
 
+# Standard imports
 import argparse
 import json
 import sys

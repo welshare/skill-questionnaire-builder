@@ -7,52 +7,18 @@ description: Create, convert, and validate FHIR R4 Questionnaire resources with 
 
 Create, convert, and validate FHIR R4 Questionnaire resources with proper clinical coding and terminology.
 
-## Setup & Installation
+## Requirements
 
-This skill requires Python dependencies and network access for some features.
-
-### 1. Install Python Dependencies
-
-The skill needs `jsonschema` library for validation. Run the setup script:
+Requires `jsonschema` for validation. Run setup once:
 
 ```bash
-# Navigate to the skill directory
-cd ~/.claude/skills/fhir-questionnaire  # Or wherever the skill is installed
-
-# Run setup (uses uv if available, falls back to pip)
 ./setup.sh
 ```
 
-Or install manually:
+Then use the virtual environment Python for scripts:
 
 ```bash
-# Using uv (recommended)
-uv pip install jsonschema
-
-# Or using pip
-pip3 install jsonschema --user
-```
-
-### 2. Network Access Configuration
-
-Some scripts require network access:
-- `search_loinc.py` - Searches LOINC codes via NLM API
-- `query_valueset.py` - Queries FHIR servers for ValueSets
-
-**Important**: These scripts are pre-approved for network access. Claude Code will automatically allow network requests to:
-- `clinicaltables.nlm.nih.gov` (LOINC search API)
-- FHIR servers you specify
-
-If you encounter network errors, the scripts will gracefully fail with informative error messages.
-
-### 3. Verify Installation
-
-```bash
-# Test jsonschema installation
-python3 -c "import jsonschema; print('✅ jsonschema:', jsonschema.__version__)"
-
-# Test validation script
-python3 scripts/validate_questionnaire.py assets/templates/minimal.json
+.venv/bin/python scripts/validate_questionnaire.py questionnaire.json
 ```
 
 ## Schema Reference
