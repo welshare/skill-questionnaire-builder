@@ -1,0 +1,79 @@
+# .gitignore for Python + Claude/Anthropic projects
+# ---------------------------------------------------------------------------
+# Python related
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.pyc
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+__pypackages__/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+nosetests.xml
+.hypothesis/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+
+# Logs and temp files
+*.log
+*.tmp
+tmp/
+temp/
+
+# Secrets / environment files
+.env
+.env.*
+secrets.json
+credentials.json
+*.pem
+*.key
+
+# ---------------------------------------------------------------------------
+# Claude / Anthropic specific artifacts
+# (ignore common cache, session and output files created by Claude/Anthropic clients)
+.claude/
+.claude_cache/
+.cache/anthropic/
+.cache/claude/
+anthropic_*
+claude_*
+claude-*
+claude_history.json
+claude_session.json
+responses.json
+claude_outputs/
+claude_logs/
+
+./*.skill
+# End of .gitignore
