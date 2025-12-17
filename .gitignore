@@ -76,4 +76,5 @@ claude_outputs/
 claude_logs/
 
 *.skill
+
 # End of .gitignore
