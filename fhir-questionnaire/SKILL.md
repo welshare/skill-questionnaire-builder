@@ -1,6 +1,6 @@
 ---
-name: fhir-questionnaire
-description: Create and validate FHIR R4 Questionnaires with LOINC/SNOMED coding. Discover standardized answer lists. Requires whitelisted network access (see Network Access Requirements).
+name: design-fhir-loinc-questionnaires
+description: Creates FHIR R4 Questionnaires and helps discovering concise LOINC codings. Helps discovering standardized answer lists and validates results against questionnaire schemas. Requires whitelisted network access (see Network Access Requirements).
 metadata:
   dependencies: python>=3.8, jsonschema>=4.0.0
 ---
