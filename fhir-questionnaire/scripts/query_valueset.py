@@ -46,6 +46,7 @@ def lookup_loinc_answerlist(loinc_code: str, server_url: str = DEFAULT_SERVER) -
     url = f"{server_url}/CodeSystem/$lookup?{parse.urlencode(params)}"
 
     try:
+        print(f"Accessing: {url}", file=sys.stderr)
         req = request.Request(url)
         req.add_header("Accept", "application/fhir+json")
 
@@ -83,18 +84,29 @@ def lookup_loinc_answerlist(loinc_code: str, server_url: str = DEFAULT_SERVER) -
         return None
 
     except error.HTTPError as e:
-        print(f"HTTP Error {e.code}: {e.reason}", file=sys.stderr)
+        print(f"HTTP Error {e.code} when accessing {url}", file=sys.stderr)
+        print(f"Reason: {e.reason}", file=sys.stderr)
         if e.code == 404:
-            print(f"LOINC code {loinc_code} not found", file=sys.stderr)
+            print(f"LOINC code {loinc_code} not found on this server", file=sys.stderr)
+        elif e.code == 403:
+            print("Access forbidden - server may not allow this operation", file=sys.stderr)
         return None
     except error.URLError as e:
-        print(f"Error accessing FHIR server: {e}", file=sys.stderr)
+        print(f"Network error when accessing {url}", file=sys.stderr)
+        print(f"Error details: {e.reason}", file=sys.stderr)
+        if "SSL" in str(e.reason) or "ssl" in str(e.reason):
+            print("SSL/TLS handshake failed - this server may not be accessible from your environment", file=sys.stderr)
+            print("Try using an alternative server with --server flag:", file=sys.stderr)
+            print("  --server https://hapi.fhir.org/baseR4", file=sys.stderr)
+            print("  --server https://r4.ontoserver.csiro.au/fhir", file=sys.stderr)
         return None
     except json.JSONDecodeError as e:
-        print(f"Error parsing response: {e}", file=sys.stderr)
+        print(f"Error parsing JSON response from {url}", file=sys.stderr)
+        print(f"Parse error: {e}", file=sys.stderr)
         return None
     except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
+        print(f"Unexpected error when accessing {url}", file=sys.stderr)
+        print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
         return None
 
 
@@ -116,6 +128,7 @@ def expand_valueset(valueset_url: str, server_url: str = DEFAULT_SERVER) -> Opti
     url = f"{server_url}/ValueSet/$expand?{parse.urlencode(params)}"
 
     try:
+        print(f"Accessing: {url}", file=sys.stderr)
         req = request.Request(url)
         req.add_header("Accept", "application/fhir+json")
 
@@ -123,24 +136,36 @@ def expand_valueset(valueset_url: str, server_url: str = DEFAULT_SERVER) -> Opti
             data = json.loads(response.read().decode())
 
         if data.get("resourceType") == "OperationOutcome":
+            print(f"Server returned OperationOutcome for {valueset_url}", file=sys.stderr)
             issues = data.get("issue", [])
             for issue in issues:
-                print(f"Error: {issue.get('details', {}).get('text', 'Unknown error')}", file=sys.stderr)
+                print(f"  Issue: {issue.get('details', {}).get('text', 'Unknown error')}", file=sys.stderr)
             return None
 
         return data
 
     except error.HTTPError as e:
-        print(f"HTTP Error {e.code}: {e.reason}", file=sys.stderr)
+        print(f"HTTP Error {e.code} when accessing {url}", file=sys.stderr)
+        print(f"Reason: {e.reason}", file=sys.stderr)
+        if e.code == 404:
+            print(f"ValueSet not found: {valueset_url}", file=sys.stderr)
         return None
     except error.URLError as e:
-        print(f"Error accessing FHIR server: {e}", file=sys.stderr)
+        print(f"Network error when accessing {url}", file=sys.stderr)
+        print(f"Error details: {e.reason}", file=sys.stderr)
+        if "SSL" in str(e.reason) or "ssl" in str(e.reason):
+            print("SSL/TLS handshake failed - this server may not be accessible from your environment", file=sys.stderr)
+            print("Try using an alternative server with --server flag:", file=sys.stderr)
+            print("  --server https://hapi.fhir.org/baseR4", file=sys.stderr)
+            print("  --server https://r4.ontoserver.csiro.au/fhir", file=sys.stderr)
         return None
     except json.JSONDecodeError as e:
-        print(f"Error parsing response: {e}", file=sys.stderr)
+        print(f"Error parsing JSON response from {url}", file=sys.stderr)
+        print(f"Parse error: {e}", file=sys.stderr)
         return None
     except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
+        print(f"Unexpected error when accessing {url}", file=sys.stderr)
+        print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
         return None
 
 
@@ -165,6 +190,7 @@ def search_valuesets(search_term: str, server_url: str = DEFAULT_SERVER, limit: 
     url = f"{server_url}/ValueSet?{parse.urlencode(params)}"
 
     try:
+        print(f"Accessing: {url}", file=sys.stderr)
         req = request.Request(url)
         req.add_header("Accept", "application/fhir+json")
 
@@ -175,16 +201,32 @@ def search_valuesets(search_term: str, server_url: str = DEFAULT_SERVER, limit: 
             print(f"Error: Expected Bundle, got {bundle.get('resourceType')}", file=sys.stderr)
             return []
 
-        return bundle.get("entry", [])
+        entries = bundle.get("entry", [])
+        if not entries:
+            print(f"No ValueSets found matching '{search_term}'", file=sys.stderr)
 
+        return entries
+
+    except error.HTTPError as e:
+        print(f"HTTP Error {e.code} when accessing {url}", file=sys.stderr)
+        print(f"Reason: {e.reason}", file=sys.stderr)
+        return []
     except error.URLError as e:
-        print(f"Error accessing FHIR server: {e}", file=sys.stderr)
+        print(f"Network error when accessing {url}", file=sys.stderr)
+        print(f"Error details: {e.reason}", file=sys.stderr)
+        if "SSL" in str(e.reason) or "ssl" in str(e.reason):
+            print("SSL/TLS handshake failed - this server may not be accessible from your environment", file=sys.stderr)
+            print("Try using an alternative server with --server flag:", file=sys.stderr)
+            print("  --server https://hapi.fhir.org/baseR4", file=sys.stderr)
+            print("  --server https://r4.ontoserver.csiro.au/fhir", file=sys.stderr)
         return []
     except json.JSONDecodeError as e:
-        print(f"Error parsing response: {e}", file=sys.stderr)
+        print(f"Error parsing JSON response from {url}", file=sys.stderr)
+        print(f"Parse error: {e}", file=sys.stderr)
         return []
     except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
+        print(f"Unexpected error when accessing {url}", file=sys.stderr)
+        print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
         return []
 
 
@@ -311,19 +353,29 @@ Examples:
     # Mode 1: Look up LOINC code and find its answer list
     if args.loinc_code:
         print(f"Looking up LOINC code: {args.loinc_code}", file=sys.stderr)
+        print(f"Using server: {args.server}", file=sys.stderr)
+        print("", file=sys.stderr)
 
         lookup_result = lookup_loinc_answerlist(args.loinc_code, args.server)
 
         if not lookup_result:
-            print(f"No answer list found for LOINC code {args.loinc_code}", file=sys.stderr)
-            print("This LOINC code may not have standardized answer options.", file=sys.stderr)
+            print("", file=sys.stderr)
+            print("=" * 80, file=sys.stderr)
+            print(f"RESULT: No answer list found for LOINC code {args.loinc_code}", file=sys.stderr)
+            print("", file=sys.stderr)
+            print("This could mean:", file=sys.stderr)
+            print("  1. This LOINC code has no standardized answer options", file=sys.stderr)
+            print("  2. Network/server error prevented lookup (see error messages above)", file=sys.stderr)
+            print("  3. The server doesn't have this LOINC code in its database", file=sys.stderr)
+            print("=" * 80, file=sys.stderr)
             sys.exit(1)
 
         answerlist_id = lookup_result["answerlist_id"]
         loinc_display = lookup_result["display"]
 
-        print(f"Found answer list: {answerlist_id}", file=sys.stderr)
-        print(f"LOINC display: {loinc_display}", file=sys.stderr)
+        print(f"✓ Found answer list: {answerlist_id}", file=sys.stderr)
+        print(f"✓ LOINC display: {loinc_display}", file=sys.stderr)
+        print("", file=sys.stderr)
 
         # Expand the answer list
         valueset_url = f"http://loinc.org/vs/{answerlist_id}"
@@ -333,7 +385,11 @@ Examples:
         valueset = expand_valueset(valueset_url, args.server)
 
         if not valueset:
-            print(f"Failed to expand ValueSet {valueset_url}", file=sys.stderr)
+            print("", file=sys.stderr)
+            print("=" * 80, file=sys.stderr)
+            print(f"RESULT: Failed to expand ValueSet {valueset_url}", file=sys.stderr)
+            print("Check error messages above for details", file=sys.stderr)
+            print("=" * 80, file=sys.stderr)
             sys.exit(1)
 
         # Output in requested format

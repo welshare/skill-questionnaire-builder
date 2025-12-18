@@ -1,7 +1,8 @@
 ---
 name: fhir-questionnaire
 description: Create and validate FHIR R4 Questionnaires with LOINC/SNOMED coding. Discover standardized answer lists. REQUIRES network access - use only in Claude Code.
-dependencies: python>=3.8, jsonschema>=4.0.0
+metadata:
+  dependencies: python>=3.8, jsonschema>=4.0.0
 ---
 
 # FHIR Questionnaire Skill
@@ -141,7 +142,7 @@ python scripts/validate_questionnaire.py questionnaire.json [--verbose] [--schem
 Validates structure, semantics, and best practices.
 
 ### query_valueset.py
-Discover LOINC answer options (uses tx.fhir.org):
+Discover LOINC answer options (uses tx.fhir.org by default):
 
 ```bash
 # Find answer options for LOINC code
@@ -152,9 +153,16 @@ python scripts/query_valueset.py --search "frequency"
 
 # Expand specific ValueSet
 python scripts/query_valueset.py --expand "http://loinc.org/vs/LL358-3"
+
+# Use alternative server if SSL issues occur
+python scripts/query_valueset.py --loinc-code "72166-2" --server https://hapi.fhir.org/baseR4
 ```
 
 **Formats**: `table` (default), `fhir` (Coding objects), `questionnaire` (complete item), `json`
+
+**Alternative servers** (if tx.fhir.org fails):
+- `https://hapi.fhir.org/baseR4`
+- `https://r4.ontoserver.csiro.au/fhir`
 
 ### create_custom_codesystem.py
 Create custom codes in Welshare namespace (`http://codes.welshare.app`):
