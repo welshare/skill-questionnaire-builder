@@ -221,9 +221,51 @@ For standardized questions, use LOINC answer lists (ValueSets):
     "code": "72166-2",
     "display": "Tobacco smoking status"
   }],
-  "answerValueSet": "http://hl7.org/fhir/ValueSet/smoking-status"
+  "answerValueSet": "http://loinc.org/vs/LL2201-3"
 }
 ```
+
+#### Discovering Answer Lists for LOINC Codes
+
+Many LOINC codes come with standardized answer lists. Use the `query_valueset.py` script to automatically discover them:
+
+```bash
+# Find answer options for a LOINC code
+.venv/bin/python scripts/query_valueset.py --loinc-code "72166-2"
+
+# Output:
+# ValueSet: LOINCAnswerListLL2201_3
+# URL: http://loinc.org/vs/LL2201-3
+# Version: 2.77
+#
+# Answer Options (8 total):
+#   LA18976-3       Current every day smoker
+#   LA18977-1       Current some day smoker
+#   LA15920-4       Former smoker
+#   LA18978-9       Never smoker
+#   ...
+
+# Get as FHIR Coding objects for direct use
+.venv/bin/python scripts/query_valueset.py --loinc-code "72166-2" --format fhir
+
+# Get as complete Questionnaire item template
+.venv/bin/python scripts/query_valueset.py --loinc-code "44250-9" --format questionnaire
+```
+
+The script uses the official FHIR terminology server (tx.fhir.org) which has comprehensive LOINC support including all answer lists. This ensures you use the correct, standardized answer options for each LOINC code.
+
+**Benefits**:
+- Automatically discovers associated answer lists
+- Provides standardized, validated answer options
+- Returns FHIR-compliant Coding objects
+- Can generate complete Questionnaire item templates
+- Ensures clinical interoperability
+
+**Common LOINC codes with answer lists**:
+- `72166-2` - Tobacco smoking status (8 options)
+- `44250-9` - PHQ-9 depression items (4 frequency options)
+- `54120-3` - Sexual orientation (7 options)
+- Many standardized assessment instruments
 
 ### 6. Panel vs Individual Questions
 

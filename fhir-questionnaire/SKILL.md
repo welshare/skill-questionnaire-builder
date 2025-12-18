@@ -1,11 +1,22 @@
 ---
 name: fhir-questionnaire
-description: Create, convert, and validate FHIR R4 Questionnaire resources with LOINC/SNOMED coding. Use when working with healthcare questionnaires, patient intake forms, clinical assessments, or surveys that need to conform to FHIR standards. Includes tools for searching LOINC codes, querying FHIR ValueSets, and generating Python code for questionnaire processing. CRITICAL - REQUIRES network access for Python scripts to reach external APIs. NOT compatible with Claude Desktop or sandboxed environments. Use ONLY in Claude Code or agents with network permissions. If scripts cannot access the web, STOP using this skill immediately.
+description: Create and validate FHIR R4 Questionnaires with LOINC/SNOMED coding. Discover standardized answer lists. REQUIRES network access - use only in Claude Code.
+dependencies: python>=3.8, jsonschema>=4.0.0
 ---
 
 # FHIR Questionnaire Skill
 
 Create, convert, and validate FHIR R4 Questionnaire resources with proper clinical coding and terminology.
+
+## Use Cases
+
+Use this skill when working with:
+- Healthcare questionnaires and patient intake forms
+- Clinical assessments and screening instruments (PHQ-9, GAD-7, etc.)
+- Surveys that need to conform to FHIR standards
+- Converting existing forms to FHIR format
+- Discovering standardized answer options for LOINC-coded questions
+- Creating custom code systems for organization-specific questions
 
 ## Requirements
 
@@ -27,7 +38,7 @@ Then use the virtual environment Python for scripts:
 
 **Required endpoints**:
 - `clinicaltables.nlm.nih.gov` (LOINC search)
-- `hapi.fhir.org` (FHIR terminology server)
+- `tx.fhir.org` (Official FHIR terminology server with LOINC support)
 
 **Compatible environments**:
 - ✅ Claude Code (with network permissions enabled)
@@ -145,9 +156,13 @@ For organization-specific questionnaires:
    .venv/bin/python scripts/search_loinc.py "blood pressure"
    ```
 
-5. **Use ValueSets for standard answers**:
+5. **Discover answer options for LOINC codes**:
    ```bash
-   .venv/bin/python scripts/query_valueset.py --server https://hapi.fhir.org/baseR4 --search "gender"
+   # If your LOINC code has standardized answers, get them automatically
+   .venv/bin/python scripts/query_valueset.py --loinc-code "72166-2"
+
+   # Or search for answer lists by keyword
+   .venv/bin/python scripts/query_valueset.py --search "frequency"
    ```
 
 6. **Implement conditional logic** (see examples in `references/examples.md`)
@@ -173,13 +188,16 @@ To make questionnaires conform to clinical standards:
    .venv/bin/python scripts/search_loinc.py "depression screening" --limit 10
    ```
 
-3. **Query FHIR servers for ValueSets**:
+3. **Discover answer options for LOINC codes**:
    ```bash
-   # Search for ValueSets
-   .venv/bin/python scripts/query_valueset.py --server https://hapi.fhir.org/baseR4 --search "gender"
+   # Find standardized answer options for a LOINC code
+   .venv/bin/python scripts/query_valueset.py --loinc-code "72166-2"
 
-   # Get specific ValueSet with codes
-   .venv/bin/python scripts/query_valueset.py --server https://hapi.fhir.org/baseR4 --id http://hl7.org/fhir/ValueSet/administrative-gender --expand
+   # Get as Questionnaire item template
+   .venv/bin/python scripts/query_valueset.py --loinc-code "72166-2" --format questionnaire
+
+   # Search for answer lists by keyword
+   .venv/bin/python scripts/query_valueset.py --search "severity"
    ```
 
 4. **Add codes to questionnaire items**:
@@ -197,12 +215,24 @@ To make questionnaires conform to clinical standards:
    ```
 
 5. **Use ValueSets for answer options**:
+
+   First, check if your LOINC code has standardized answers:
+   ```bash
+   .venv/bin/python scripts/query_valueset.py --loinc-code "72166-2"
+   ```
+
+   Then use the discovered answerValueSet in your questionnaire:
    ```json
    {
-     "linkId": "gender",
+     "linkId": "smoking-status",
      "type": "choice",
-     "text": "Gender",
-     "answerValueSet": "http://hl7.org/fhir/ValueSet/administrative-gender"
+     "code": [{
+       "system": "http://loinc.org",
+       "code": "72166-2",
+       "display": "Tobacco smoking status"
+     }],
+     "text": "Tobacco smoking status",
+     "answerValueSet": "http://loinc.org/vs/LL2201-3"
    }
    ```
 
@@ -430,6 +460,15 @@ Allow multiple entries:
 
 ### Choice Questions with LOINC
 
+Use `query_valueset.py` to discover standardized answer options:
+
+```bash
+# Find answer options for tobacco smoking status
+.venv/bin/python scripts/query_valueset.py --loinc-code "72166-2" --format questionnaire
+```
+
+Example output showing complete LOINC coding with answer list:
+
 ```json
 {
   "linkId": "smoking-status",
@@ -439,8 +478,8 @@ Allow multiple entries:
     "code": "72166-2",
     "display": "Tobacco smoking status"
   }],
-  "text": "Smoking status",
-  "answerValueSet": "http://hl7.org/fhir/ValueSet/smoking-status"
+  "text": "Tobacco smoking status",
+  "answerValueSet": "http://loinc.org/vs/LL2201-3"
 }
 ```
 
@@ -488,21 +527,68 @@ Validates:
 - **Warnings**: Missing recommended fields (title, text, answer options)
 
 ### query_valueset.py
-Query FHIR servers for ValueSets and CodeSystems:
+Discover LOINC answer lists and query FHIR ValueSets. Uses tx.fhir.org (official FHIR terminology server) by default.
+
+**Primary Use Case: Find Answer Options for LOINC Codes**
+
+Given a LOINC code, automatically discover and display its standardized answer options:
 
 ```bash
-# Search for ValueSets
-.venv/bin/python scripts/query_valueset.py --server https://hapi.fhir.org/baseR4 --search "gender"
+# Find answer options for a LOINC code (tobacco smoking status)
+.venv/bin/python scripts/query_valueset.py --loinc-code "72166-2"
+# Returns: 8 answer options like "Current every day smoker", "Former smoker", etc.
 
-# Get specific ValueSet
-.venv/bin/python scripts/query_valueset.py --server https://hapi.fhir.org/baseR4 --id http://hl7.org/fhir/ValueSet/administrative-gender
+# Get answers as FHIR Coding objects (ready for Questionnaire)
+.venv/bin/python scripts/query_valueset.py --loinc-code "72166-2" --format fhir
 
-# Expand to see all codes
-.venv/bin/python scripts/query_valueset.py --expand --server https://hapi.fhir.org/baseR4 --id http://hl7.org/fhir/ValueSet/administrative-gender
+# Get as complete Questionnaire item template
+.venv/bin/python scripts/query_valueset.py --loinc-code "44250-9" --format questionnaire
+# Returns: Complete FHIR Questionnaire item with code, display, text, and answerValueSet
+
+# Table format with full details
+.venv/bin/python scripts/query_valueset.py --loinc-code "72166-2" --full
+```
+
+**Search for ValueSets by Keyword**
+
+Find potential answer lists for custom questions:
+
+```bash
+# Search for answer lists related to frequency
+.venv/bin/python scripts/query_valueset.py --search "frequency"
+
+# Search for severity scales
+.venv/bin/python scripts/query_valueset.py --search "severity" --limit 20
 
 # JSON output
-.venv/bin/python scripts/query_valueset.py --server https://hapi.fhir.org/baseR4 --search "gender" --format json
+.venv/bin/python scripts/query_valueset.py --search "gender" --format json
 ```
+
+**Expand Specific ValueSets**
+
+Get all codes from a known ValueSet URL:
+
+```bash
+# Expand a LOINC answer list directly
+.venv/bin/python scripts/query_valueset.py --expand "http://loinc.org/vs/LL358-3"
+
+# Expand with FHIR Coding format
+.venv/bin/python scripts/query_valueset.py --expand "http://loinc.org/vs/LL2201-3" --format fhir
+```
+
+**Custom FHIR Server**
+
+Use a different server if needed:
+
+```bash
+.venv/bin/python scripts/query_valueset.py --loinc-code "72166-2" --server https://hapi.fhir.org/baseR4
+```
+
+**Output Formats**:
+- `table` (default): Human-readable table
+- `fhir`: FHIR Coding objects for use in Questionnaires
+- `questionnaire`: Complete FHIR Questionnaire item with coding and answerValueSet
+- `json`: Full FHIR ValueSet resource
 
 ### create_custom_codesystem.py
 Create custom CodeSystem and ValueSet resources for Welshare namespace:

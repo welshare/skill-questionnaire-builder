@@ -263,7 +263,32 @@ Verify behavior when:
 
 Prefer ValueSets over inline answerOptions for reusability:
 
-**Good (ValueSet):**
+**Best (LOINC with standardized answer list):**
+
+Many LOINC codes come with standardized answer lists. Always check first:
+
+```bash
+# Discover answer options for a LOINC code
+.venv/bin/python scripts/query_valueset.py --loinc-code "72166-2"
+```
+
+Then use the discovered ValueSet:
+
+```json
+{
+  "linkId": "smoking-status",
+  "type": "choice",
+  "code": [{
+    "system": "http://loinc.org",
+    "code": "72166-2",
+    "display": "Tobacco smoking status"
+  }],
+  "text": "Tobacco smoking status",
+  "answerValueSet": "http://loinc.org/vs/LL2201-3"
+}
+```
+
+**Good (Standard FHIR ValueSet):**
 ```json
 {
   "linkId": "gender",
@@ -273,7 +298,7 @@ Prefer ValueSets over inline answerOptions for reusability:
 }
 ```
 
-**Acceptable (inline, for short lists):**
+**Acceptable (inline, for short custom lists):**
 ```json
 {
   "linkId": "yes-no",
@@ -285,6 +310,11 @@ Prefer ValueSets over inline answerOptions for reusability:
   ]
 }
 ```
+
+**When to use each approach:**
+- **LOINC answer lists**: For any LOINC-coded question (preferred for interoperability)
+- **Standard FHIR ValueSets**: For common demographics and administrative data
+- **Inline answerOption**: Only for short (2-3 options), truly custom choices
 
 ### Provide Display Values
 

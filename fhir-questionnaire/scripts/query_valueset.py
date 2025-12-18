@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """
-Query FHIR servers for ValueSets and CodeSystems.
+Query LOINC answer lists and FHIR ValueSets.
 
-This script queries FHIR servers to retrieve ValueSets and CodeSystems that can be
-used in FHIR Questionnaire answerValueSet references.
+This script helps discover answer options for LOINC codes and search for ValueSets.
+It uses the tx.fhir.org terminology server which has comprehensive LOINC support.
 
 Usage:
-    python query_valueset.py --server https://hapi.fhir.org/baseR4 --search "gender"
-    python query_valueset.py --server https://hapi.fhir.org/baseR4 --id http://hl7.org/fhir/ValueSet/administrative-gender
-    python query_valueset.py --expand --server https://hapi.fhir.org/baseR4 --id http://hl7.org/fhir/ValueSet/administrative-gender
+    # Find answer options for a LOINC code
+    python query_valueset.py --loinc-code "72166-2"
+
+    # Search for answer lists by text
+    python query_valueset.py --search "smoking"
+
+    # Expand a specific ValueSet
+    python query_valueset.py --expand "http://loinc.org/vs/LL2201-3"
 """
 
 import argparse
@@ -18,13 +23,134 @@ from typing import Any, Dict, List, Optional
 from urllib import request, parse, error
 
 
-def search_valuesets(server_url: str, search_term: str, limit: int = 10) -> List[Dict]:
+# Default FHIR terminology server with comprehensive LOINC support
+DEFAULT_SERVER = "https://tx.fhir.org/r4"
+
+
+def lookup_loinc_answerlist(loinc_code: str, server_url: str = DEFAULT_SERVER) -> Optional[Dict[str, str]]:
     """
-    Search for ValueSets on a FHIR server.
+    Look up a LOINC code to find its associated answer list ID and display name.
 
     Args:
-        server_url: Base URL of the FHIR server
-        search_term: Search term for ValueSet name or title
+        loinc_code: The LOINC code (e.g., "72166-2")
+        server_url: FHIR terminology server base URL
+
+    Returns:
+        Dictionary with 'answerlist_id' and 'display', or None if not found
+    """
+    params = {
+        "system": "http://loinc.org",
+        "code": loinc_code
+    }
+
+    url = f"{server_url}/CodeSystem/$lookup?{parse.urlencode(params)}"
+
+    try:
+        req = request.Request(url)
+        req.add_header("Accept", "application/fhir+json")
+
+        with request.urlopen(req, timeout=30) as response:
+            data = json.loads(response.read().decode())
+
+        if data.get("resourceType") != "Parameters":
+            print(f"Error: Expected Parameters resource, got {data.get('resourceType')}", file=sys.stderr)
+            return None
+
+        # Extract display name and answer list
+        display = None
+        answerlist_id = None
+
+        for param in data.get("parameter", []):
+            # Get display name
+            if param.get("name") == "display":
+                display = param.get("valueString")
+
+            # Find the AnswerList property
+            if param.get("name") == "property":
+                parts = param.get("part", [])
+                code_part = next((p for p in parts if p.get("name") == "code" and p.get("valueCode") == "AnswerList"), None)
+                if code_part:
+                    value_part = next((p for p in parts if p.get("name") == "value"), None)
+                    if value_part:
+                        answerlist_id = value_part.get("valueCode")
+
+        if answerlist_id:
+            return {
+                "answerlist_id": answerlist_id,
+                "display": display or f"LOINC {loinc_code}"
+            }
+
+        return None
+
+    except error.HTTPError as e:
+        print(f"HTTP Error {e.code}: {e.reason}", file=sys.stderr)
+        if e.code == 404:
+            print(f"LOINC code {loinc_code} not found", file=sys.stderr)
+        return None
+    except error.URLError as e:
+        print(f"Error accessing FHIR server: {e}", file=sys.stderr)
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Error parsing response: {e}", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}", file=sys.stderr)
+        return None
+
+
+def expand_valueset(valueset_url: str, server_url: str = DEFAULT_SERVER) -> Optional[Dict]:
+    """
+    Expand a ValueSet to show all contained codes.
+
+    Args:
+        valueset_url: ValueSet canonical URL (e.g., "http://loinc.org/vs/LL2201-3")
+        server_url: FHIR terminology server base URL
+
+    Returns:
+        Expanded ValueSet resource or None if not found
+    """
+    params = {
+        "url": valueset_url
+    }
+
+    url = f"{server_url}/ValueSet/$expand?{parse.urlencode(params)}"
+
+    try:
+        req = request.Request(url)
+        req.add_header("Accept", "application/fhir+json")
+
+        with request.urlopen(req, timeout=30) as response:
+            data = json.loads(response.read().decode())
+
+        if data.get("resourceType") == "OperationOutcome":
+            issues = data.get("issue", [])
+            for issue in issues:
+                print(f"Error: {issue.get('details', {}).get('text', 'Unknown error')}", file=sys.stderr)
+            return None
+
+        return data
+
+    except error.HTTPError as e:
+        print(f"HTTP Error {e.code}: {e.reason}", file=sys.stderr)
+        return None
+    except error.URLError as e:
+        print(f"Error accessing FHIR server: {e}", file=sys.stderr)
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Error parsing response: {e}", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}", file=sys.stderr)
+        return None
+
+
+def search_valuesets(search_term: str, server_url: str = DEFAULT_SERVER, limit: int = 10) -> List[Dict]:
+    """
+    Search for ValueSets by title or name.
+
+    Args:
+        search_term: Search term for ValueSet title/name
+        server_url: FHIR terminology server base URL
         limit: Maximum number of results
 
     Returns:
@@ -42,7 +168,7 @@ def search_valuesets(server_url: str, search_term: str, limit: int = 10) -> List
         req = request.Request(url)
         req.add_header("Accept", "application/fhir+json")
 
-        with request.urlopen(req, timeout=10) as response:
+        with request.urlopen(req, timeout=30) as response:
             bundle = json.loads(response.read().decode())
 
         if bundle.get("resourceType") != "Bundle":
@@ -62,170 +188,200 @@ def search_valuesets(server_url: str, search_term: str, limit: int = 10) -> List
         return []
 
 
-def get_valueset(server_url: str, valueset_id: str, expand: bool = False) -> Optional[Dict]:
-    """
-    Retrieve a specific ValueSet from a FHIR server.
-
-    Args:
-        server_url: Base URL of the FHIR server
-        valueset_id: ValueSet URL or ID
-        expand: Whether to expand the ValueSet to show all codes
-
-    Returns:
-        ValueSet resource or None if not found
-    """
-    # If valueset_id is a full URL, use it directly with $expand
-    if valueset_id.startswith("http"):
-        if expand:
-            url = f"{server_url}/ValueSet/$expand?url={parse.quote(valueset_id)}"
-        else:
-            # Search for the ValueSet by URL
-            url = f"{server_url}/ValueSet?url={parse.quote(valueset_id)}"
-    else:
-        # Treat as a resource ID
-        if expand:
-            url = f"{server_url}/ValueSet/{valueset_id}/$expand"
-        else:
-            url = f"{server_url}/ValueSet/{valueset_id}"
-
-    try:
-        req = request.Request(url)
-        req.add_header("Accept", "application/fhir+json")
-
-        with request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read().decode())
-
-        # If we got a Bundle from the search, extract the first ValueSet
-        if data.get("resourceType") == "Bundle":
-            entries = data.get("entry", [])
-            if entries:
-                return entries[0].get("resource")
-            return None
-
-        return data
-
-    except error.HTTPError as e:
-        if e.code == 404:
-            print(f"Error: ValueSet not found: {valueset_id}", file=sys.stderr)
-        else:
-            print(f"HTTP Error {e.code}: {e.reason}", file=sys.stderr)
-        return None
-    except error.URLError as e:
-        print(f"Error accessing FHIR server: {e}", file=sys.stderr)
-        return None
-    except json.JSONDecodeError as e:
-        print(f"Error parsing response: {e}", file=sys.stderr)
-        return None
-    except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
-        return None
-
-
-def format_valueset_summary(entries: List[Dict]) -> str:
-    """Format ValueSet search results as a summary table."""
-    if not entries:
-        return "No ValueSets found."
-
+def format_expansion(valueset: Dict, show_full: bool = False) -> str:
+    """Format an expanded ValueSet showing answer options."""
     output = []
-    output.append(f"{'Title':<40} {'ID/URL':<60}")
-    output.append("-" * 100)
 
-    for entry in entries:
-        resource = entry.get("resource", {})
-        title = resource.get("title", resource.get("name", "N/A"))[:37] + "..." if len(resource.get("title", resource.get("name", "N/A"))) > 40 else resource.get("title", resource.get("name", "N/A"))
-        url = resource.get("url", resource.get("id", "N/A"))[:57] + "..." if len(resource.get("url", resource.get("id", "N/A"))) > 60 else resource.get("url", resource.get("id", "N/A"))
-        output.append(f"{title:<40} {url:<60}")
-
-    return "\n".join(output)
-
-
-def format_valueset_expansion(valueset: Dict) -> str:
-    """Format an expanded ValueSet showing all codes."""
-    if "expansion" not in valueset:
-        return json.dumps(valueset, indent=2)
-
-    output = []
-    output.append(f"ValueSet: {valueset.get('title', valueset.get('name', 'N/A'))}")
+    # Header information
+    output.append(f"ValueSet: {valueset.get('name', 'N/A')}")
     output.append(f"URL: {valueset.get('url', 'N/A')}")
     output.append(f"Version: {valueset.get('version', 'N/A')}")
-    output.append("\nCodes:")
-    output.append(f"{'System':<40} {'Code':<20} {'Display':<50}")
-    output.append("-" * 110)
+    output.append("")
 
+    # Get expansion
     expansion = valueset.get("expansion", {})
     contains = expansion.get("contains", [])
 
+    if not contains:
+        output.append("No codes found in expansion.")
+        return "\n".join(output)
+
+    output.append(f"Answer Options ({len(contains)} total):")
+    output.append("-" * 80)
+
+    # Format codes
     for item in contains:
-        system = item.get("system", "")[:37] + "..." if len(item.get("system", "")) > 40 else item.get("system", "")
-        code = item.get("code", "")[:17] + "..." if len(item.get("code", "")) > 20 else item.get("code", "")
-        display = item.get("display", "")[:47] + "..." if len(item.get("display", "")) > 50 else item.get("display", "")
-        output.append(f"{system:<40} {code:<20} {display:<50}")
+        code = item.get("code", "")
+        display = item.get("display", "")
+        system = item.get("system", "")
+
+        if show_full:
+            output.append(f"Code:    {code}")
+            output.append(f"Display: {display}")
+            output.append(f"System:  {system}")
+            output.append("-" * 80)
+        else:
+            output.append(f"  {code:<15} {display}")
 
     return "\n".join(output)
+
+
+def format_fhir_codings(valueset: Dict) -> str:
+    """Format expansion as FHIR Coding objects for use in Questionnaires."""
+    expansion = valueset.get("expansion", {})
+    contains = expansion.get("contains", [])
+
+    codings = []
+    for item in contains:
+        codings.append({
+            "system": item.get("system"),
+            "code": item.get("code"),
+            "display": item.get("display")
+        })
+
+    return json.dumps(codings, indent=2)
+
+
+def format_questionnaire_item(loinc_code: str, loinc_display: str, valueset_url: str, valueset: Dict) -> str:
+    """Format as a FHIR Questionnaire item with answerValueSet."""
+    expansion = valueset.get("expansion", {})
+    contains = expansion.get("contains", [])
+
+    item = {
+        "linkId": loinc_code.replace("-", "_"),
+        "type": "choice",
+        "code": [{
+            "system": "http://loinc.org",
+            "code": loinc_code,
+            "display": loinc_display
+        }],
+        "text": loinc_display,
+        "answerValueSet": valueset_url,
+        "_answerValueSet_preview": {
+            "description": f"This ValueSet contains {len(contains)} answer options",
+            "options": [{"code": c.get("code"), "display": c.get("display")} for c in contains[:5]]
+        }
+    }
+
+    return json.dumps(item, indent=2)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Query FHIR servers for ValueSets and CodeSystems",
+        description="Query LOINC answer lists and FHIR ValueSets",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Search for ValueSets
-  python query_valueset.py --server https://hapi.fhir.org/baseR4 --search "gender"
+  # Find answer options for a LOINC code
+  python query_valueset.py --loinc-code "72166-2"
 
-  # Get a specific ValueSet
-  python query_valueset.py --server https://hapi.fhir.org/baseR4 --id http://hl7.org/fhir/ValueSet/administrative-gender
+  # Get FHIR Coding format for use in Questionnaires
+  python query_valueset.py --loinc-code "72166-2" --format fhir
 
-  # Expand a ValueSet to see all codes
-  python query_valueset.py --expand --server https://hapi.fhir.org/baseR4 --id http://hl7.org/fhir/ValueSet/administrative-gender
+  # Get as a Questionnaire item template
+  python query_valueset.py --loinc-code "72166-2" --format questionnaire
 
-Common FHIR servers:
-  - HAPI FHIR Test Server: https://hapi.fhir.org/baseR4
-  - Ontoserver (Australian): https://r4.ontoserver.csiro.au/fhir
+  # Search for ValueSets by keyword
+  python query_valueset.py --search "smoking"
+
+  # Expand a specific ValueSet URL
+  python query_valueset.py --expand "http://loinc.org/vs/LL2201-3"
+
+  # Use a different FHIR server
+  python query_valueset.py --loinc-code "72166-2" --server https://hapi.fhir.org/baseR4
         """
     )
 
-    parser.add_argument("--server", required=True, help="FHIR server base URL")
+    parser.add_argument("--loinc-code", help="LOINC code to look up (finds associated answer list)")
     parser.add_argument("--search", help="Search term for ValueSets")
-    parser.add_argument("--id", help="ValueSet URL or ID to retrieve")
-    parser.add_argument("--expand", action="store_true", help="Expand ValueSet to show all codes")
-    parser.add_argument("--format", choices=["json", "table"], default="table",
+    parser.add_argument("--expand", help="ValueSet URL to expand")
+    parser.add_argument("--server", default=DEFAULT_SERVER, help=f"FHIR server URL (default: {DEFAULT_SERVER})")
+    parser.add_argument("--format", choices=["table", "json", "fhir", "questionnaire"], default="table",
                        help="Output format (default: table)")
     parser.add_argument("--limit", type=int, default=10, help="Maximum search results (default: 10)")
+    parser.add_argument("--full", action="store_true", help="Show full details in table format")
 
     args = parser.parse_args()
 
-    if not args.search and not args.id:
-        parser.error("Either --search or --id must be specified")
+    # Validate arguments
+    modes = [args.loinc_code, args.search, args.expand]
+    if sum(bool(m) for m in modes) != 1:
+        parser.error("Exactly one of --loinc-code, --search, or --expand must be specified")
 
-    if args.search and args.id:
-        parser.error("Cannot specify both --search and --id")
+    # Mode 1: Look up LOINC code and find its answer list
+    if args.loinc_code:
+        print(f"Looking up LOINC code: {args.loinc_code}", file=sys.stderr)
 
-    # Search for ValueSets
-    if args.search:
-        results = search_valuesets(args.server, args.search, args.limit)
+        lookup_result = lookup_loinc_answerlist(args.loinc_code, args.server)
+
+        if not lookup_result:
+            print(f"No answer list found for LOINC code {args.loinc_code}", file=sys.stderr)
+            print("This LOINC code may not have standardized answer options.", file=sys.stderr)
+            sys.exit(1)
+
+        answerlist_id = lookup_result["answerlist_id"]
+        loinc_display = lookup_result["display"]
+
+        print(f"Found answer list: {answerlist_id}", file=sys.stderr)
+        print(f"LOINC display: {loinc_display}", file=sys.stderr)
+
+        # Expand the answer list
+        valueset_url = f"http://loinc.org/vs/{answerlist_id}"
+        print(f"Expanding ValueSet: {valueset_url}", file=sys.stderr)
+        print("", file=sys.stderr)
+
+        valueset = expand_valueset(valueset_url, args.server)
+
+        if not valueset:
+            print(f"Failed to expand ValueSet {valueset_url}", file=sys.stderr)
+            sys.exit(1)
+
+        # Output in requested format
+        if args.format == "json":
+            print(json.dumps(valueset, indent=2))
+        elif args.format == "fhir":
+            print(format_fhir_codings(valueset))
+        elif args.format == "questionnaire":
+            print(format_questionnaire_item(args.loinc_code, loinc_display, valueset_url, valueset))
+        else:  # table
+            print(format_expansion(valueset, args.full))
+
+    # Mode 2: Search for ValueSets
+    elif args.search:
+        results = search_valuesets(args.search, args.server, args.limit)
+
         if not results:
-            print("No results found or an error occurred.", file=sys.stderr)
+            print("No results found.", file=sys.stderr)
             sys.exit(1)
 
         if args.format == "json":
             print(json.dumps(results, indent=2))
         else:
-            print(format_valueset_summary(results))
+            print(f"{'Title':<50} {'URL':<70}")
+            print("-" * 120)
+            for entry in results:
+                resource = entry.get("resource", {})
+                title = resource.get("title", resource.get("name", "N/A"))[:47]
+                if len(resource.get("title", resource.get("name", "N/A"))) > 50:
+                    title += "..."
+                url = resource.get("url", "N/A")[:67]
+                if len(resource.get("url", "N/A")) > 70:
+                    url += "..."
+                print(f"{title:<50} {url:<70}")
 
-    # Get specific ValueSet
-    elif args.id:
-        valueset = get_valueset(args.server, args.id, args.expand)
+    # Mode 3: Expand a specific ValueSet
+    elif args.expand:
+        valueset = expand_valueset(args.expand, args.server)
+
         if not valueset:
             sys.exit(1)
 
         if args.format == "json":
             print(json.dumps(valueset, indent=2))
-        else:
-            if args.expand:
-                print(format_valueset_expansion(valueset))
-            else:
-                print(json.dumps(valueset, indent=2))
+        elif args.format == "fhir":
+            print(format_fhir_codings(valueset))
+        else:  # table
+            print(format_expansion(valueset, args.full))
 
 
 if __name__ == "__main__":
