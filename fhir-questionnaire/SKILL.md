@@ -1,6 +1,6 @@
 ---
 name: fhir-questionnaire
-description: Create and validate FHIR R4 Questionnaires with LOINC/SNOMED coding. Discover standardized answer lists. REQUIRES network access - use only in Claude Code.
+description: Create and validate FHIR R4 Questionnaires with LOINC/SNOMED coding. Discover standardized answer lists. Requires whitelisted network access (see Network Access Requirements).
 metadata:
   dependencies: python>=3.8, jsonschema>=4.0.0
 ---
@@ -17,16 +17,15 @@ Create, convert, and validate FHIR R4 Questionnaire resources with proper clinic
 - Best practices and patterns
 - Working examples
 
-## Network Access Required
+## Network Access Requirements
 
-**CRITICAL**: This skill requires network access to:
+This skill requires whitelisted network access to the following URLs:
 - `clinicaltables.nlm.nih.gov` (LOINC search)
 - `tx.fhir.org` (FHIR terminology server)
 
-**Compatible**: Claude Code with network permissions, custom agents with network access
-**NOT compatible**: Claude Desktop, sandboxed environments
+The skill works in Claude Desktop, Claude Code, and custom agents when these URLs are whitelisted for network access.
 
-Stop immediately if network errors occur - no fallback available.
+**CRITICAL WARNING**: If network access fails or LOINC search is unavailable, STOP IMMEDIATELY. DO NOT attempt to suggest LOINC codes from your training data or general knowledge. LOINC codes from AI training are highly unreliable and will lead to incorrect clinical coding. Always use the provided scripts to access authoritative LOINC sources. There is no acceptable fallback when network access is unavailable.
 
 ## Quick Start
 
