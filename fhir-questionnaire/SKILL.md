@@ -124,6 +124,27 @@ See `references/examples.md` for complete implementations.
 
 ## Tools and Scripts
 
+### extract_loinc_codes.py
+Extract and analyze all LOINC codes from a questionnaire:
+
+```bash
+# Display all codes as a table
+python scripts/extract_loinc_codes.py questionnaire.json
+
+# Save to JSON file
+python scripts/extract_loinc_codes.py questionnaire.json --output codes.json
+
+# Show summary only
+python scripts/extract_loinc_codes.py questionnaire.json --format summary
+
+# Validate codes against LOINC database
+python scripts/extract_loinc_codes.py questionnaire.json --validate
+```
+
+**Formats**: `table` (default, detailed view), `json` (structured output), `summary` (concise list)
+
+Recursively extracts both question codes and answer codes, showing where each is used.
+
 ### search_loinc.py
 Search LOINC codes:
 
