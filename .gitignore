@@ -77,4 +77,10 @@ claude_logs/
 
 *.skill
 
+# ---------------------------------------------------------------------------
+# Node / TypeScript
+node_modules/
+dist/
+*.tsbuildinfo
+
 # End of .gitignore

@@ -1,0 +1,15 @@
+{
+  "name": "@welshare/sdk",
+  "version": "0.1.0",
+  "description": "Welshare SDK – Nillion collection stats and aggregation utilities",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
