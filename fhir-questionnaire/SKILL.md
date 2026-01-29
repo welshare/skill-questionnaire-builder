@@ -1,210 +1,152 @@
 ---
 name: design-fhir-loinc-questionnaires
-description: Creates FHIR R4 Questionnaires and helps discovering concise LOINC codings. Helps discovering standardized answer lists and validates results against questionnaire schemas. Requires whitelisted network access (see Network Access Requirements).
+description: Creates FHIR R4 Questionnaires with official LOINC codes. NEVER suggest codes from memory - ALWAYS use provided scripts to search LOINC database.
 metadata:
   dependencies: python>=3.8, jsonschema>=4.0.0
 ---
 
 # FHIR Questionnaire Skill
 
-Create, convert, and validate FHIR R4 Questionnaire resources with proper clinical coding and terminology.
+## ⚠️ CRITICAL RULES - READ FIRST
 
-## Documentation Structure
+**NEVER suggest LOINC codes from memory or training data.**
 
-**[REFERENCE.md](REFERENCE.md)** - Start here for navigation to all detailed documentation:
-- Complete FHIR specification
-- LOINC coding guide
-- Best practices and patterns
-- Working examples
+When any LOINC code is needed:
+1. **ALWAYS run `python scripts/search_loinc.py "search term"` FIRST**
+2. **ONLY use codes returned by the script**
+3. **If search fails or returns no results, DO NOT make up codes**
+
+LOINC codes from AI memory are highly unreliable and will cause incorrect clinical coding.
 
 ## Network Access Requirements
 
-This skill requires whitelisted network access to the following URLs:
+Requires whitelisted network access:
 - `clinicaltables.nlm.nih.gov` (LOINC search)
 - `tx.fhir.org` (FHIR terminology server)
 
-The skill works in Claude Desktop, Claude Code, and custom agents when these URLs are whitelisted for network access.
+If network access fails, STOP. Do not suggest codes.
 
-**CRITICAL WARNING**: If network access fails or LOINC search is unavailable, STOP IMMEDIATELY. DO NOT attempt to suggest LOINC codes from your training data or general knowledge. LOINC codes from AI training are highly unreliable and will lead to incorrect clinical coding. Always use the provided scripts to access authoritative LOINC sources. There is no acceptable fallback when network access is unavailable.
+## Essential Scripts (Use These Every Time)
 
-## Quick Start
-
-1. **Pick a template** from `assets/templates/`:
-   - `minimal.json`, `basic.json`, or `advanced.json`
-   - `CodeSystem-example.json`, `ValueSet-example.json` for custom codes
-
-2. **Reference documentation** - See [REFERENCE.md](REFERENCE.md) for:
-   - FHIR specification details
-   - LOINC coding guide
-   - Examples and patterns
-
-3. **Search LOINC codes**:
-   ```bash
-   python scripts/search_loinc.py "depression screening"
-   ```
-
-4. **Discover answer options**:
-   ```bash
-   python scripts/query_valueset.py --loinc-code "72166-2"
-   ```
-
-5. **Validate**:
-   ```bash
-   python scripts/validate_questionnaire.py questionnaire.json
-   ```
-
-## Core Workflows
-
-### 1. Standardized Clinical Instruments (PHQ-9, GAD-7, etc.)
-
-- Find LOINC panel code: `search_loinc.py "PHQ-9 panel"`
-- Review `references/examples.md` for complete implementations
-- Add official LOINC question codes
-- Use LOINC answer options via `query_valueset.py`
-- See `references/loinc_guide.md` for details
-
-### 2. Custom Organizational Questionnaires
-
-- Start with `assets/templates/advanced.json`
-- Structure with groups and appropriate item types
-- Add LOINC codes where applicable
-- Discover answer options: `query_valueset.py --loinc-code "CODE"`
-- See `references/fhir_questionnaire_spec.md` for item types
-- See `references/examples.md` for conditional logic patterns
-
-### 3. Add Clinical Terminology
-
-- Identify questions needing standardization
-- Search LOINC: `search_loinc.py "body weight" --format fhir`
-- Discover answer options: `query_valueset.py --loinc-code "CODE"`
-- Add codes to questionnaire items
-- See `references/loinc_guide.md` for common codes
-
-### 4. Create Custom Codes (When LOINC Isn't Suitable)
-
-**MANDATORY**: Use Welshare namespace `http://codes.welshare.app`
-
+### 1. Search LOINC Codes
+**ALWAYS run this before suggesting any LOINC code:**
 ```bash
-# Interactive mode (recommended)
-python scripts/create_custom_codesystem.py --interactive
+python scripts/search_loinc.py "depression screening"
+python scripts/search_loinc.py "blood pressure" --format fhir
 ```
 
-Generates CodeSystem and ValueSet resources for organization-specific questions.
-See `references/loinc_guide.md` "Creating Custom Codes" section for complete guide.
+### 2. Find Answer Options
+**For questions with standardized answers:**
+```bash
+python scripts/query_valueset.py --loinc-code "72166-2"
+python scripts/query_valueset.py --loinc-code "72166-2" --format fhir
+```
 
-## Python Code Generation
+### 3. Validate Questionnaire
+**Before finalizing:**
+```bash
+python scripts/validate_questionnaire.py questionnaire.json
+```
 
-Use `fhir.resources` library for processing questionnaires:
+## Templates
 
-```python
-from fhir.resources.questionnaire import Questionnaire, QuestionnaireItem
-from fhir.resources.questionnaireresponse import QuestionnaireResponse
+Start with `assets/templates/`:
+- `minimal.json` - Bare bones structure
+- `basic.json` - Simple questionnaire
+- `advanced.json` - Complex with conditional logic
 
-# Load and validate
-q = Questionnaire.parse_file('questionnaire.json')
+## Documentation
 
-# Process responses
-response = QuestionnaireResponse.parse_file('response.json')
-for item in response.item:
-    if item.answer:
-        print(f"{item.linkId}: {item.answer[0].valueString}")
+See [REFERENCE.md](REFERENCE.md) for detailed specs, examples, and best practices.
 
-# Create programmatically
-q = Questionnaire(status="draft", title="New Questionnaire")
-q.item = [QuestionnaireItem(linkId="q1", type="string", text="Name?")]
+## Workflows
+
+### Standardized Clinical Instruments (PHQ-9, GAD-7, etc.)
+```bash
+# Step 1: Find panel code (NEVER skip this)
+python scripts/search_loinc.py "PHQ-9 panel"
+
+# Step 2: Find answer options
+python scripts/query_valueset.py --loinc-code "FOUND-CODE" --format fhir
+
+# Step 3: See examples/templates
+# Check references/examples.md for complete implementations
+```
+
+### Custom Organizational Questionnaires
+```bash
+# Step 1: Start with template
+cp assets/templates/advanced.json my-questionnaire.json
+
+# Step 2: For any clinical questions, search LOINC
+python scripts/search_loinc.py "body weight"
+
+# Step 3: Add answer options if available
+python scripts/query_valueset.py --loinc-code "FOUND-CODE"
+
+# Step 4: Validate
+python scripts/validate_questionnaire.py my-questionnaire.json
+```
+
+### Create Custom Codes (Only When LOINC Unavailable)
+Use Welshare namespace: `http://codes.welshare.app`
+```bash
+python scripts/create_custom_codesystem.py --interactive
 ```
 
 ## Common Patterns
 
-See `references/examples.md` for complete implementations.
+- **Conditional display**: Use `enableWhen` to show/hide questions
+- **Repeating groups**: Set `"repeats": true` for medications, allergies, etc.
+- **Answer options**: Always use `query_valueset.py --loinc-code "CODE"`
 
-**Conditional display** - Use `enableWhen` to show/hide questions
-**Repeating groups** - Set `"repeats": true` for multiple entries (medications, allergies)
-**LOINC answer options** - Use `query_valueset.py --loinc-code "CODE" --format questionnaire`
+See `references/examples.md` for complete working examples.
 
-## Tools and Scripts
+## Script Reference
 
-### extract_loinc_codes.py
-Extract and analyze all LOINC codes from a questionnaire:
-
+### search_loinc.py - Find LOINC Codes
 ```bash
-# Display all codes as a table
+python scripts/search_loinc.py "blood pressure"
+python scripts/search_loinc.py "depression" --limit 10 --format fhir
+```
+
+### query_valueset.py - Find Answer Options
+```bash
+python scripts/query_valueset.py --loinc-code "72166-2"
+python scripts/query_valueset.py --loinc-code "72166-2" --format fhir
+python scripts/query_valueset.py --search "smoking"
+```
+**Alternative servers** (if tx.fhir.org fails):
+- `--server https://hapi.fhir.org/baseR4`
+- `--server https://r4.ontoserver.csiro.au/fhir`
+
+### validate_questionnaire.py - Validate Structure
+```bash
+python scripts/validate_questionnaire.py questionnaire.json
+python scripts/validate_questionnaire.py questionnaire.json --verbose
+```
+
+### extract_loinc_codes.py - Analyze Codes
+```bash
 python scripts/extract_loinc_codes.py questionnaire.json
-
-# Save to JSON file
-python scripts/extract_loinc_codes.py questionnaire.json --output codes.json
-
-# Show summary only
-python scripts/extract_loinc_codes.py questionnaire.json --format summary
-
-# Validate codes against LOINC database
 python scripts/extract_loinc_codes.py questionnaire.json --validate
 ```
 
-**Formats**: `table` (default, detailed view), `json` (structured output), `summary` (concise list)
-
-Recursively extracts both question codes and answer codes, showing where each is used.
-
-### search_loinc.py
-Search LOINC codes:
-
-```bash
-python scripts/search_loinc.py "blood pressure" [--limit N] [--format fhir|table]
-```
-
-### validate_questionnaire.py
-Validate against schema:
-
-```bash
-python scripts/validate_questionnaire.py questionnaire.json [--verbose] [--schema-only]
-```
-
-Validates structure, semantics, and best practices.
-
-### query_valueset.py
-Discover LOINC answer options (uses tx.fhir.org by default):
-
-```bash
-# Find answer options for LOINC code
-python scripts/query_valueset.py --loinc-code "72166-2" [--format fhir|questionnaire|json]
-
-# Search ValueSets by keyword
-python scripts/query_valueset.py --search "frequency"
-
-# Expand specific ValueSet
-python scripts/query_valueset.py --expand "http://loinc.org/vs/LL358-3"
-
-# Use alternative server if SSL issues occur
-python scripts/query_valueset.py --loinc-code "72166-2" --server https://hapi.fhir.org/baseR4
-```
-
-**Formats**: `table` (default), `fhir` (Coding objects), `questionnaire` (complete item), `json`
-
-**Alternative servers** (if tx.fhir.org fails):
-- `https://hapi.fhir.org/baseR4`
-- `https://r4.ontoserver.csiro.au/fhir`
-
-### create_custom_codesystem.py
-Create custom codes in Welshare namespace (`http://codes.welshare.app`):
-
+### create_custom_codesystem.py - Custom Codes
 ```bash
 python scripts/create_custom_codesystem.py --interactive
 ```
-
-Generates CodeSystem and ValueSet resources for organization-specific questions.
+Use Welshare namespace: `http://codes.welshare.app`
 
 ## Troubleshooting
 
-**Validation errors** - Check `references/fhir_questionnaire_spec.md` for:
-- Required fields (status, item types)
-- Valid enableWhen references
-- linkId uniqueness
+- **No LOINC results**: Use broader search terms (e.g., "depression" not "PHQ-9 question 1")
+- **Network errors**: Try alternative servers with `--server` flag
+- **Validation errors**: Check `references/fhir_questionnaire_spec.md` for requirements
+- **No answer list found**: Not all LOINC codes have standardized answer options
 
-**LOINC search** - Use broader terms, search for panel names
-**ValueSet errors** - Verify exact URLs, try `--search` instead of specific IDs
+## Reference Links
 
-## Resources
-
-- FHIR R4 Questionnaire: http://hl7.org/fhir/R4/questionnaire.html
-- LOINC Database: https://loinc.org
-- Python fhir.resources: https://pypi.org/project/fhir.resources/
+- [FHIR R4 Questionnaire Spec](http://hl7.org/fhir/R4/questionnaire.html)
+- [LOINC Database](https://loinc.org)
+- [Complete Documentation](REFERENCE.md)
