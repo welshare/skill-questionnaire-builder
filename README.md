@@ -1,8 +1,11 @@
 # FHIR Questionnaire Skill
 
-A Claude skill that enables AI agents to create and validate FHIR R4 Questionnaires with proper LOINC/SNOMED coding, discover standardized answer lists, and validate results against questionnaire schemas.
+A Claude skill that enables AI agents to create and validate FHIR Questionnaires with proper LOINC/SNOMED coding, discover standardized answer lists, and validate results against questionnaire schemas.
 
-[![GitHub release](https://img.shields.io/github/v/release/welshare/questionnaire-skill)](https://github.com/welshare/questionnaire-skill/releases/latest)
+[![GitHub release](https://img.shields.io/github/v/release/welshare/skill-questionnaire-builder)](https://github.com/welshare/skill-questionnaire-builder/releases/tag/latest)
+
+![Sample Questionnaire](docs/questionnaire.png)
+
 
 ## What are Skills?
 
@@ -20,8 +23,10 @@ This skill requires whitelisted network access to:
 
 ### Quick Install
 
-1. **Download the latest release**: [fhir-questionnaire.skill](https://github.com/welshare/questionnaire-skill/releases/latest/download/fhir-questionnaire.skill)
+1. **Download the latest release**: [fhir-questionnaire.skill](https://github.com/welshare/skill-questionnaire-builder/releases/latest/download/fhir-questionnaire.skill)
 2. Install it in Claude Desktop or Claude Code
+
+![Claude Skills](docs/claude.png)
 
 ### Manual Download
 
@@ -45,6 +50,7 @@ make clean
 ```
 
 **Documentation:**
+- [SKILL.md](fhir-questionnaire/SKILL.md) - Skills are humanly readable
 - [PACKAGING.md](PACKAGING.md) - Detailed packaging procedures
 - [RELEASE.md](RELEASE.md) - How to create and publish releases
 
