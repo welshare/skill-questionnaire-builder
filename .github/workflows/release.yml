@@ -2,7 +2,7 @@ name: Build and Release Skill
 
 on:
   release:
-    types: [created]
+    types: [published]
   workflow_dispatch:
 
 jobs:
@@ -11,20 +11,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build skill package
         run: make package
 
       - name: Upload skill artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: fhir-questionnaire-skill
           path: fhir-questionnaire.skill
 
       - name: Attach to release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
         with:
           files: fhir-questionnaire.skill
         env:
