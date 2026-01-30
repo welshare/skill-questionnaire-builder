@@ -259,11 +259,11 @@ Verify behavior when:
 
 ## Answer Options
 
-### Use ValueSets for Standard Answers
+### Priority Order for Answer Lists
 
-Prefer ValueSets over inline answerOptions for reusability:
+Always follow this priority when defining answer options:
 
-**Best (LOINC with standardized answer list):**
+#### 1. LOINC Standardized Answer Lists (Best for Clinical)
 
 Many LOINC codes come with standardized answer lists. Always check first:
 
@@ -288,7 +288,8 @@ Then use the discovered ValueSet:
 }
 ```
 
-**Good (Standard FHIR ValueSet):**
+#### 2. Standard FHIR ValueSets (For Common Administrative Data)
+
 ```json
 {
   "linkId": "gender",
@@ -298,23 +299,34 @@ Then use the discovered ValueSet:
 }
 ```
 
-**Acceptable (inline, for short custom lists):**
+#### 3. Inline Custom Answer Lists (Default for Non-Standardized)
+
+When no LOINC or standard answer list exists, use inline `answerOption` with system-less `valueCoding`. This is the **default approach** for custom answer lists:
+
 ```json
 {
-  "linkId": "yes-no",
+  "linkId": "sleep-quality",
   "type": "choice",
-  "text": "Do you agree?",
+  "text": "How would you rate your sleep quality?",
   "answerOption": [
-    {"valueCoding": {"code": "yes", "display": "Yes"}},
-    {"valueCoding": {"code": "no", "display": "No"}}
+    {"valueCoding": {"code": "good", "display": "Good"}},
+    {"valueCoding": {"code": "fair", "display": "Fair"}},
+    {"valueCoding": {"code": "poor", "display": "Poor"}}
   ]
 }
 ```
 
+Omitting `system` is valid FHIR and signals that these are questionnaire-scoped codes. This is appropriate for any number of custom options, not just short lists.
+
+#### 4. Reusable Custom Coding System (Opt-in Only)
+
+Only use a custom coding system (e.g., Welshare namespace `http://codes.welshare.app`) when the user **explicitly requests** reusable codes shared across multiple questionnaires. See `references/loinc_guide.md` for details.
+
 **When to use each approach:**
 - **LOINC answer lists**: For any LOINC-coded question (preferred for interoperability)
 - **Standard FHIR ValueSets**: For common demographics and administrative data
-- **Inline answerOption**: Only for short (2-3 options), truly custom choices
+- **Inline answerOption (no system)**: Default for all custom answer lists
+- **Reusable coding system**: Only when the user explicitly requests cross-questionnaire code reuse
 
 ### Provide Display Values
 
@@ -485,10 +497,10 @@ For large questionnaires:
 **Problem:** Referencing questions that come later
 **Solution:** Reorder questions or restructure logic
 
-### 5. Inline Answer Lists for Standard Concepts
+### 5. Inventing Fake Coding Systems for Custom Answers
 
-**Problem:** Duplicating standard ValueSets inline
-**Solution:** Use answerValueSet references
+**Problem:** Creating non-existent `system` URLs like `http://example.org/my-codes` for custom answers
+**Solution:** Omit `system` for inline custom answers (valid FHIR), or use standard codes (LOINC, SNOMED). Only use a custom coding system if explicitly building a reusable code library
 
 ### 6. No Versioning for Published Questionnaires
 

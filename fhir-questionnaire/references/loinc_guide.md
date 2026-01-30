@@ -281,55 +281,116 @@ When implementing standardized instruments:
 - Maintain original question order
 - Use specified answer options
 
-## Creating Custom Codes When LOINC Isn't Suitable
+## Custom Answer Lists When LOINC Isn't Suitable
 
-**MANDATORY URL BASE**: All custom CodeSystems and ValueSets MUST use `http://codes.welshare.app` as the URL base. This is hardcoded in the `create_custom_codesystem.py` script and cannot be changed to ensure consistency across all Welshare questionnaires.
+When LOINC search returns no suitable codes or answer lists, use **inline answerOption with system-less valueCoding** as the default approach. This is valid FHIR and the simplest way to define custom answer lists.
 
-### When to Create Custom Codes
+### Default: Inline Answer Options (No Coding System)
 
-Create custom codes in the Welshare namespace when:
-- No suitable LOINC codes exist for your specific domain
-- Questions are organization-specific or novel
-- You need fine-grained answer options not in standard terminologies
-- Conducting research with new assessment instruments
+For custom questions where no standardized coding exists, define answer options directly on the questionnaire item. Omit the `system` property to signal these are questionnaire-scoped codes:
 
-### Using the create_custom_codesystem.py Script
-
-#### Interactive Mode (Recommended)
-
-```bash
-python scripts/create_custom_codesystem.py --interactive
+```json
+{
+  "linkId": "routine-preference",
+  "type": "choice",
+  "text": "How do you feel about routines?",
+  "answerOption": [
+    {"valueCoding": {"code": "prefer-routines", "display": "Prefer routines"}},
+    {"valueCoding": {"code": "sometimes-new", "display": "Sometimes seek new challenges"}},
+    {"valueCoding": {"code": "frequently-new", "display": "Frequently seek new challenges"}}
+  ]
+}
 ```
 
-The script will prompt you for:
-1. **Title**: Human-readable name (e.g., "Routine Preference Scale")
-2. **ID**: Identifier (auto-suggested from title)
-3. **Category**: Domain/category (e.g., "brainhealth", "social")
-4. **Description**: Purpose of the code system
-5. **Concepts**: Code/display pairs for each answer option
+**When to use this approach:**
+- No suitable LOINC codes exist for the question or its answers
+- The answer list is specific to this questionnaire
+- The options are unlikely to be reused across many questionnaires
+- You want the simplest, most portable questionnaire structure
 
-#### Command-Line Mode
+**Best practices for inline codes:**
+1. **Search LOINC first**: Always try `search_loinc.py` and `query_valueset.py` before creating custom answers
+2. **Use descriptive codes**: Make codes self-explanatory (e.g., `"prefer-routines"` not `"pr1"`)
+3. **Consistent formatting**: Use lowercase with hyphens (kebab-case) for code values
+4. **Clear display text**: Display text should be user-friendly and unambiguous
+5. **Logical order**: List options in a natural order (severity, frequency, chronological, etc.)
+
+### Hybrid: LOINC Question Code + Inline Custom Answers
+
+You can assign a LOINC code to the question itself while using inline custom answer options:
+
+```json
+{
+  "linkId": "exercise-frequency",
+  "type": "choice",
+  "code": [{
+    "system": "http://loinc.org",
+    "code": "68516-4",
+    "display": "Exercise activity"
+  }],
+  "text": "How often do you exercise per week?",
+  "answerOption": [
+    {"valueCoding": {"code": "daily", "display": "Daily"}},
+    {"valueCoding": {"code": "few-times-week", "display": "A few times a week"}},
+    {"valueCoding": {"code": "weekly", "display": "About once a week"}},
+    {"valueCoding": {"code": "rarely", "display": "Rarely"}},
+    {"valueCoding": {"code": "never", "display": "Never"}}
+  ]
+}
+```
+
+This gives you standard interoperability for the question identity via LOINC, with custom granularity for the answers.
+
+### Opt-in: Reusable Welshare Coding System
+
+If the user **explicitly requests** reusable codes that can be shared across multiple questionnaires, use the Welshare namespace (`http://codes.welshare.app`). This is useful for organizations building a library of standardized custom codes.
+
+#### Creating Reusable Codes
 
 ```bash
+# Interactive mode
+python scripts/create_custom_codesystem.py --interactive
+
+# Command-line mode
 python scripts/create_custom_codesystem.py \
   --id routine-preference \
   --category brainhealth \
   --title "Routine Preference Scale" \
   --description "Scale for assessing preference for routines" \
-  --codes "prefer-routines:Prefer routines,sometimes-new:Sometimes seek new challenges,frequently-new:Frequently seek new challenges"
+  --codes "prefer-routines:Prefer routines,sometimes-new:Sometimes seek new challenges"
 ```
 
-#### Output
-
-The script generates two files:
+The script generates:
 - `CodeSystem-{id}.json` - Defines the codes and their meanings
 - `ValueSet-vs-{id}.json` - References the CodeSystem for use in questionnaires
 
-**MANDATORY**: Both files use the Welshare namespace `http://codes.welshare.app/` as the URL base. This cannot be changed.
+Both use the Welshare namespace `http://codes.welshare.app/` as URL base.
 
-### Using Custom Codes in Questionnaires
+#### Converting Inline Answers to Reusable Codes
 
-#### With ValueSet Reference (Recommended for Choice Questions)
+To upgrade an inline answer list to the reusable format, add the `system` property to each `valueCoding`:
+
+```json
+{
+  "linkId": "routine-preference",
+  "type": "choice",
+  "text": "How do you feel about routines?",
+  "answerOption": [
+    {"valueCoding": {
+      "system": "http://codes.welshare.app/CodeSystem/brainhealth/routine-preference.json",
+      "code": "prefer-routines",
+      "display": "Prefer routines"
+    }},
+    {"valueCoding": {
+      "system": "http://codes.welshare.app/CodeSystem/brainhealth/routine-preference.json",
+      "code": "sometimes-new",
+      "display": "Sometimes seek new challenges"
+    }}
+  ]
+}
+```
+
+Or reference a ValueSet instead of inline options:
 
 ```json
 {
@@ -339,113 +400,6 @@ The script generates two files:
   "answerValueSet": "http://codes.welshare.app/ValueSet/brainhealth/routine-preference.json"
 }
 ```
-
-#### With Direct Coding (For Question Identification)
-
-```json
-{
-  "linkId": "routine-question",
-  "type": "choice",
-  "code": [{
-    "system": "http://codes.welshare.app/CodeSystem/brainhealth/routine-preference.json",
-    "code": "routine-preference",
-    "display": "Routine Preference"
-  }],
-  "text": "How do you feel about routines?",
-  "answerValueSet": "http://codes.welshare.app/ValueSet/brainhealth/routine-preference.json"
-}
-```
-
-### CodeSystem Structure
-
-```json
-{
-  "resourceType": "CodeSystem",
-  "id": "routine-preference",
-  "url": "http://codes.welshare.app/CodeSystem/brainhealth/routine-preference.json",
-  "version": "1.0.0",
-  "name": "RoutinePreference",
-  "title": "Routine Preference Scale",
-  "status": "active",
-  "experimental": false,
-  "date": "2025-11-11",
-  "publisher": "Welshare",
-  "description": "Scale for assessing individual preference for routines",
-  "content": "complete",
-  "concept": [
-    {
-      "code": "prefer-routines",
-      "display": "Prefer routines"
-    },
-    {
-      "code": "sometimes-new",
-      "display": "Sometimes seek new challenges"
-    },
-    {
-      "code": "frequently-new",
-      "display": "Frequently seek new challenges"
-    }
-  ]
-}
-```
-
-### ValueSet Structure
-
-```json
-{
-  "resourceType": "ValueSet",
-  "id": "vs-routine-preference",
-  "url": "http://codes.welshare.app/ValueSet/brainhealth/routine-preference.json",
-  "status": "active",
-  "compose": {
-    "include": [
-      {
-        "system": "http://codes.welshare.app/CodeSystem/brainhealth/routine-preference.json"
-      }
-    ]
-  }
-}
-```
-
-### Best Practices for Custom Codes
-
-1. **Search LOINC first**: Always try to find suitable LOINC codes before creating custom ones
-2. **Use descriptive IDs**: Make IDs self-explanatory (e.g., "sleep-quality" not "sq1")
-3. **Consistent naming**: Use lowercase with hyphens (kebab-case)
-4. **Clear displays**: Display text should be user-friendly and unambiguous
-5. **Categorize logically**: Use consistent category names (e.g., "brainhealth", "social", "physical")
-6. **Document thoroughly**: Add good descriptions to CodeSystems
-7. **Version control**: Keep custom codes in version control with questionnaires
-8. **Consider reusability**: Design codes to be reused across multiple questionnaires
-
-### Hybrid Approach: LOINC + Custom
-
-For organization-specific questionnaires, combine both:
-
-```json
-{
-  "linkId": "exercise-frequency",
-  "type": "choice",
-  "code": [
-    {
-      "system": "http://loinc.org",
-      "code": "68516-4",
-      "display": "Exercise activity"
-    },
-    {
-      "system": "http://codes.welshare.app/CodeSystem/physical/exercise-frequency.json",
-      "code": "exercise-frequency",
-      "display": "Exercise Frequency - Custom Scale"
-    }
-  ],
-  "text": "How often do you exercise per week?",
-  "answerValueSet": "http://codes.welshare.app/ValueSet/physical/exercise-frequency.json"
-}
-```
-
-This allows:
-- Standard interoperability via LOINC
-- Specific answer granularity via custom codes
 
 ## LOINC Copyright Notice
 
