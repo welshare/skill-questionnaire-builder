@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-Create custom CodeSystem and ValueSet resources for Welshare.
+Create reusable CodeSystem and ValueSet resources (opt-in).
 
-When no suitable LOINC codes exist, this script generates custom CodeSystem and
-ValueSet resources in the Welshare namespace.
+This script generates custom CodeSystem and ValueSet resources in the Welshare
+namespace for use cases where reusable codes across multiple questionnaires are
+explicitly desired.
 
-MANDATORY URL BASE: http://codes.welshare.app
-All custom CodeSystems and ValueSets MUST use this URL base. This is hardcoded
-and cannot be changed to ensure consistency across all Welshare questionnaires.
+NOTE: For most custom answer lists, prefer inline answerOption with system-less
+valueCoding directly in the questionnaire. Only use this script when the user
+explicitly requests reusable codes that can be shared across questionnaires.
+
+URL Base: http://codes.welshare.app
+All resources created by this script use the Welshare URL base for consistency.
 
 Usage:
     python create_custom_codesystem.py --id routine-preference --category brainhealth --title "Routine Preference Scale" --codes "prefer-routines:Prefer routines,sometimes-new:Sometimes seek new challenges"
@@ -59,8 +63,8 @@ def create_codesystem(
     """
     Create a CodeSystem resource.
 
-    MANDATORY: All CodeSystems use the Welshare URL base: http://codes.welshare.app
-    This is hardcoded and cannot be changed.
+    Uses the Welshare URL base: http://codes.welshare.app for consistency
+    across reusable code systems.
 
     Args:
         id: CodeSystem identifier (e.g., "routine-preference")
@@ -80,7 +84,7 @@ def create_codesystem(
     name = ''.join(word.capitalize() for word in title.split())
     name = re.sub(r'[^A-Za-z0-9]', '', name)
 
-    # MANDATORY URL BASE: http://codes.welshare.app (DO NOT CHANGE)
+    # URL base: http://codes.welshare.app
     codesystem = {
         "resourceType": "CodeSystem",
         "id": id,
@@ -115,8 +119,8 @@ def create_valueset(
     """
     Create a ValueSet resource that references a CodeSystem.
 
-    MANDATORY: All ValueSets use the Welshare URL base: http://codes.welshare.app
-    This is hardcoded and cannot be changed.
+    Uses the Welshare URL base: http://codes.welshare.app for consistency
+    across reusable value sets.
 
     Args:
         codesystem_id: ID of the CodeSystem to reference
@@ -128,7 +132,7 @@ def create_valueset(
         ValueSet resource as dict
     """
     valueset_id = f"vs-{codesystem_id}"
-    # MANDATORY URL BASE: http://codes.welshare.app (DO NOT CHANGE)
+    # URL base: http://codes.welshare.app
     codesystem_url = f"http://codes.welshare.app/CodeSystem/{category}/{codesystem_id}.json"
 
     valueset = {
@@ -190,7 +194,9 @@ def interactive_mode() -> Tuple[str, str, str, str, List[Tuple[str, str]]]:
     Returns:
         Tuple of (id, category, title, description, concepts)
     """
-    print("\n=== Create Custom CodeSystem & ValueSet ===\n")
+    print("\n=== Create Reusable CodeSystem & ValueSet ===")
+    print("Note: For simple custom answer lists, consider using inline answerOption")
+    print("      with system-less valueCoding instead (simpler, no external resources).\n")
 
     # Get title first (most natural)
     title = input("Title (e.g., 'Routine Preference Scale'): ").strip()
@@ -250,9 +256,12 @@ def interactive_mode() -> Tuple[str, str, str, str, List[Tuple[str, str]]]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Create custom CodeSystem and ValueSet resources for Welshare",
+        description="Create reusable CodeSystem and ValueSet resources (opt-in for cross-questionnaire code sharing)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+NOTE: For most custom answer lists, prefer inline answerOption with system-less
+      valueCoding. Only use this script when reusable codes are explicitly needed.
+
 Examples:
   # Interactive mode
   python create_custom_codesystem.py --interactive
@@ -342,20 +351,25 @@ Examples:
         json.dump(valueset, f, indent=2)
 
     # Success message
-    print(f"\n✅ Successfully created custom code system!\n")
+    print(f"\n✅ Successfully created reusable code system!\n")
     print(f"CodeSystem: {codesystem_file}")
     print(f"  URL: {codesystem['url']}")
     print(f"  Concepts: {len(concepts)}")
     print(f"\nValueSet: {valueset_file}")
     print(f"  URL: {valueset['url']}")
-    print(f"\n📋 Usage in Questionnaire:")
+    print(f"\n📋 Usage in Questionnaire (with ValueSet reference):")
     print(f'   "answerValueSet": "{valueset["url"]}"')
-    print(f"\n   Or with direct coding:")
-    print(f'   "code": [{{')
-    print(f'     "system": "{codesystem["url"]}",')
-    print(f'     "code": "{concepts[0][0]}",')
-    print(f'     "display": "{concepts[0][1]}"')
-    print(f'   }}]')
+    print(f"\n   Or with inline coding (add system to each valueCoding):")
+    print(f'   "answerOption": [')
+    print(f'     {{"valueCoding": {{')
+    print(f'       "system": "{codesystem["url"]}",')
+    print(f'       "code": "{concepts[0][0]}",')
+    print(f'       "display": "{concepts[0][1]}"')
+    print(f'     }}}}')
+    print(f'   ]')
+    print(f"\n💡 Tip: For simpler use cases, consider inline answerOption without system:"
+          f'\n   {{"valueCoding": {{"code": "{concepts[0][0]}", "display": "{concepts[0][1]}"}}}}')
+    print(f"   This avoids external resource dependencies.")
 
 
 if __name__ == "__main__":

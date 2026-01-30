@@ -84,21 +84,48 @@ python scripts/search_loinc.py "body weight"
 # Step 3: Add answer options if available
 python scripts/query_valueset.py --loinc-code "FOUND-CODE"
 
-# Step 4: Validate
+# Step 4: For custom questions without LOINC results, use inline answerOptions
+# (no coding system needed - just code + display)
+
+# Step 5: Validate
 python scripts/validate_questionnaire.py my-questionnaire.json
 ```
 
-### Create Custom Codes (Only When LOINC Unavailable)
-Use Welshare namespace: `http://codes.welshare.app`
+### Custom Answer Lists (When LOINC Has No Match)
+
+When LOINC search returns no suitable answer list, use **inline answerOption with system-less valueCoding** by default. This is the simplest, spec-compliant approach for custom answer lists:
+
+```json
+{
+  "linkId": "sleep-quality",
+  "type": "choice",
+  "text": "How would you rate your sleep quality?",
+  "answerOption": [
+    {"valueCoding": {"code": "good", "display": "Good"}},
+    {"valueCoding": {"code": "fair", "display": "Fair"}},
+    {"valueCoding": {"code": "poor", "display": "Poor"}}
+  ]
+}
+```
+
+**Do NOT invent a coding system URI.** Omitting `system` is valid FHIR and signals that these are local, questionnaire-scoped codes.
+
+#### Opt-in: Reusable Welshare Coding System
+
+If the user explicitly requests reusable codes that can be shared across questionnaires, use the Welshare namespace (`http://codes.welshare.app`) via the helper script:
+
 ```bash
 python scripts/create_custom_codesystem.py --interactive
 ```
+
+This creates a CodeSystem + ValueSet pair. To convert an inline answer list to the reusable format, add `"system": "http://codes.welshare.app/CodeSystem/<category>/<id>.json"` to each `valueCoding` and optionally reference the ValueSet via `answerValueSet`. See `references/loinc_guide.md` for details.
 
 ## Common Patterns
 
 - **Conditional display**: Use `enableWhen` to show/hide questions
 - **Repeating groups**: Set `"repeats": true` for medications, allergies, etc.
-- **Answer options**: Always use `query_valueset.py --loinc-code "CODE"`
+- **Standardized answers**: Use `query_valueset.py --loinc-code "CODE"` for LOINC-backed answer lists
+- **Custom answers**: Use inline `answerOption` with `valueCoding` (no `system`) for non-standardized choices
 
 See `references/examples.md` for complete working examples.
 
@@ -132,18 +159,18 @@ python scripts/extract_loinc_codes.py questionnaire.json
 python scripts/extract_loinc_codes.py questionnaire.json --validate
 ```
 
-### create_custom_codesystem.py - Custom Codes
+### create_custom_codesystem.py - Reusable Custom Codes (Opt-in)
 ```bash
 python scripts/create_custom_codesystem.py --interactive
 ```
-Use Welshare namespace: `http://codes.welshare.app`
+Only use when the user explicitly requests reusable codes across questionnaires. Uses the Welshare namespace: `http://codes.welshare.app`. Default for custom answers is inline `answerOption` without a coding system.
 
 ## Troubleshooting
 
 - **No LOINC results**: Use broader search terms (e.g., "depression" not "PHQ-9 question 1")
 - **Network errors**: Try alternative servers with `--server` flag
 - **Validation errors**: Check `references/fhir_questionnaire_spec.md` for requirements
-- **No answer list found**: Not all LOINC codes have standardized answer options
+- **No answer list found**: Use inline `answerOption` with system-less `valueCoding` (code + display only). Do NOT fall back to a custom coding system unless the user explicitly requests it
 
 ## Reference Links
 
