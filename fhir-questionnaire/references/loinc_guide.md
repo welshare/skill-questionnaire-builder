@@ -409,9 +409,10 @@ Terms of use: https://loinc.org/license/
 
 While LOINC codes are freely available, attribution is required when distributing questionnaires that use LOINC codes.
 
+
 ## Additional Resources
 
 - **LOINC Official Site**: https://loinc.org
 - **FHIR LOINC Implementation Guide**: http://hl7.org/fhir/loinc.html
 - **LOINC Groups**: Pre-built panels and hierarchies
-- **SNOMED-LOINC Mapping**: For converting between terminologies
+
