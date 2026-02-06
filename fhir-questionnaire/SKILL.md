@@ -1,6 +1,6 @@
 ---
 name: design-fhir-loinc-questionnaires
-description: Creates FHIR R4 Questionnaires with official LOINC codes. NEVER suggest codes from memory - ALWAYS use provided scripts to search LOINC database.
+description: Creates FHIR Questionnaires with official LOINC codes. NEVER suggest codes from memory - ALWAYS use provided scripts to search LOINC database.
 metadata:
   dependencies: python>=3.8, jsonschema>=4.0.0
 ---
@@ -54,10 +54,6 @@ Start with `assets/templates/`:
 - `minimal.json` - Bare bones structure
 - `basic.json` - Simple questionnaire
 - `advanced.json` - Complex with conditional logic
-
-## Documentation
-
-See [REFERENCE.md](REFERENCE.md) for detailed specs, examples, and best practices.
 
 ## Workflows
 
@@ -172,8 +168,12 @@ Only use when the user explicitly requests reusable codes across questionnaires.
 - **Validation errors**: Check `references/fhir_questionnaire_spec.md` for requirements
 - **No answer list found**: Use inline `answerOption` with system-less `valueCoding` (code + display only). Do NOT fall back to a custom coding system unless the user explicitly requests it
 
+## Deep Knowledge References
+
+We've assembled deep knowledge for you to consult on specific topics. Checkout the index file on See [REFERENCE.md](REFERENCE.md) and drill down the knowledge path for highly detailed instructions on modelling questionnaires.
+
 ## Reference Links
 
-- [FHIR R4 Questionnaire Spec](http://hl7.org/fhir/R4/questionnaire.html)
+- [FHIR Questionnaire Spec](https://hl7.org/fhir/questionnaire.html)
 - [LOINC Database](https://loinc.org)
 - [Complete Documentation](REFERENCE.md)
