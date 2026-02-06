@@ -138,7 +138,7 @@ Examples:
 
     if not results:
         print("No results found or an error occurred.", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(0)  # Exit successfully to not break parallel commands
 
     print(format_output(results, args.format))
 

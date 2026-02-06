@@ -368,7 +368,7 @@ Examples:
             print("  2. Network/server error prevented lookup (see error messages above)", file=sys.stderr)
             print("  3. The server doesn't have this LOINC code in its database", file=sys.stderr)
             print("=" * 80, file=sys.stderr)
-            sys.exit(1)
+            sys.exit(0)  # Exit successfully to not break parallel commands
 
         answerlist_id = lookup_result["answerlist_id"]
         loinc_display = lookup_result["display"]
@@ -390,7 +390,7 @@ Examples:
             print(f"RESULT: Failed to expand ValueSet {valueset_url}", file=sys.stderr)
             print("Check error messages above for details", file=sys.stderr)
             print("=" * 80, file=sys.stderr)
-            sys.exit(1)
+            sys.exit(0)  # Exit successfully to not break parallel commands
 
         # Output in requested format
         if args.format == "json":
@@ -408,7 +408,7 @@ Examples:
 
         if not results:
             print("No results found.", file=sys.stderr)
-            sys.exit(1)
+            sys.exit(0)  # Exit successfully to not break parallel commands
 
         if args.format == "json":
             print(json.dumps(results, indent=2))
@@ -430,7 +430,7 @@ Examples:
         valueset = expand_valueset(args.expand, args.server)
 
         if not valueset:
-            sys.exit(1)
+            sys.exit(0)  # Exit successfully to not break parallel commands
 
         if args.format == "json":
             print(json.dumps(valueset, indent=2))
