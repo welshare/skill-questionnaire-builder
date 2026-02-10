@@ -1,6 +1,6 @@
 ---
 name: design-fhir-loinc-questionnaires
-description: Creates FHIR Questionnaires with official LOINC and SNOMED CT codes. NEVER suggest codes from memory - ALWAYS use provided scripts to search terminology databases.
+description: Helps creating FHIR conforming questionnaire definitions from plain requirement ideation docs. Contains scripts to look up LOINC and SNOMED CT codes for medical conditions, findings, observations, medications, procedures from a official coding APIs. No API keys required at the moment. 
 metadata:
   dependencies: python>=3.8, jsonschema>=4.0.0
 ---
@@ -9,7 +9,7 @@ metadata:
 
 ## ⚠️ CRITICAL RULES - READ FIRST
 
-**NEVER suggest LOINC or SNOMED CT codes from memory or training data.**
+**NEVER suggest LOINC or SNOMED CT codes from memory or training data. ALWAYS use the search and query scripts in this skill.**
 
 When any clinical code is needed:
 1. **For clinical questions/observations: ALWAYS run `python scripts/search_loinc.py "search term"` FIRST**
