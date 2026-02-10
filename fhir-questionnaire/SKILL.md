@@ -1,6 +1,6 @@
 ---
 name: design-fhir-loinc-questionnaires
-description: Creates FHIR Questionnaires with official LOINC codes. NEVER suggest codes from memory - ALWAYS use provided scripts to search LOINC database.
+description: Helps creating FHIR conforming questionnaire definitions from plain requirement ideation docs. Contains scripts to look up LOINC and SNOMED CT codes for medical conditions, findings, observations, medications, procedures from a official coding APIs. No API keys required at the moment. 
 metadata:
   dependencies: python>=3.8, jsonschema>=4.0.0
 ---
@@ -9,40 +9,50 @@ metadata:
 
 ## ⚠️ CRITICAL RULES - READ FIRST
 
-**NEVER suggest LOINC codes from memory or training data.**
+**NEVER suggest LOINC or SNOMED CT codes from memory or training data. ALWAYS use the search and query scripts in this skill.**
 
-When any LOINC code is needed:
-1. **ALWAYS run `python scripts/search_loinc.py "search term"` FIRST**
-2. **ONLY use codes returned by the script**
-3. **If search fails or returns no results, DO NOT make up codes**
+When any clinical code is needed:
+1. **For clinical questions/observations: ALWAYS run `python scripts/search_loinc.py "search term"` FIRST**
+2. **For clinical concepts/conditions: ALWAYS run `python scripts/search_snomed.py "search term"` FIRST**
+3. **ONLY use codes returned by the scripts**
+4. **If search fails or returns no results, DO NOT make up codes**
 
-LOINC codes from AI memory are highly unreliable and will cause incorrect clinical coding.
+Clinical codes from AI memory are highly unreliable and will cause incorrect clinical coding.
 
 ## Network Access Requirements
 
 Requires whitelisted network access:
 - `clinicaltables.nlm.nih.gov` (LOINC search)
-- `tx.fhir.org` (FHIR terminology server)
+- `tx.fhir.org` (FHIR terminology server for LOINC answer lists and SNOMED CT search)
 
 If network access fails, STOP. Do not suggest codes.
 
 ## Essential Scripts (Use These Every Time)
 
 ### 1. Search LOINC Codes
-**ALWAYS run this before suggesting any LOINC code:**
+**ALWAYS run this before suggesting any LOINC code (clinical questions/observations):**
 ```bash
 python scripts/search_loinc.py "depression screening"
 python scripts/search_loinc.py "blood pressure" --format fhir
 ```
 
-### 2. Find Answer Options
+### 2. Search SNOMED CT Codes
+**ALWAYS run this before suggesting any SNOMED CT code (clinical concepts/conditions):**
+```bash
+python scripts/search_snomed.py "diabetes"
+python scripts/search_snomed.py "hypertension" --format fhir
+python scripts/search_snomed.py "diabetes mellitus" --semantic-tag "disorder"
+```
+Note: The `--semantic-tag` filter works best when the semantic tag appears in the display name (e.g., "Diabetes mellitus (disorder)").
+
+### 3. Find Answer Options
 **For questions with standardized answers:**
 ```bash
 python scripts/query_valueset.py --loinc-code "72166-2"
 python scripts/query_valueset.py --loinc-code "72166-2" --format fhir
 ```
 
-### 3. Validate Questionnaire
+### 4. Validate Questionnaire
 **Before finalizing:**
 ```bash
 python scripts/validate_questionnaire.py questionnaire.json
@@ -132,6 +142,17 @@ See `references/examples.md` for complete working examples.
 python scripts/search_loinc.py "blood pressure"
 python scripts/search_loinc.py "depression" --limit 10 --format fhir
 ```
+
+### search_snomed.py - Find SNOMED CT Codes
+```bash
+python scripts/search_snomed.py "diabetes"
+python scripts/search_snomed.py "hypertension" --limit 10 --format fhir
+python scripts/search_snomed.py "asthma" --format table
+python scripts/search_snomed.py "diabetes mellitus" --semantic-tag "disorder"
+```
+**Formats:** `json` (default), `table`, `fhir`
+**Semantic tags (when present in results):** `disorder`, `finding`, `procedure`, `body structure`, `substance`, `organism`
+Note: Semantic tag filtering only works when tags are included in the display name from the terminology server.
 
 ### query_valueset.py - Find Answer Options
 ```bash

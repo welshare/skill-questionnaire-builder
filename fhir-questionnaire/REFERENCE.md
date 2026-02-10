@@ -20,6 +20,8 @@ This document provides a navigation guide to all reference materials for the FHI
   - Creating custom codes when LOINC isn't suitable
   - Answer list discovery
 
+- **[snomed_guide.md](references/snomed_guide.md)** - SNOMED CT usage for clinical concepts (conditions, findings, procedures)
+
 ### Best Practices
 - **[best_practices.md](references/best_practices.md)** - Design principles and guidelines
   - Questionnaire design principles
